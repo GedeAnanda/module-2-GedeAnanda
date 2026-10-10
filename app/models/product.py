@@ -37,6 +37,7 @@ class Product(db.Model):
     price = db.Column(db.Numeric(12, 2), nullable=False)
     stock = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     description = db.Column(db.Text)
+    image_url = db.Column(db.String(500))
     is_active = db.Column(db.Boolean, server_default=db.text('true'))
     created_at = db.Column(
         db.DateTime(timezone=True), 
@@ -57,6 +58,7 @@ class Product(db.Model):
             "price": float(self.price),
             "stock": self.stock,
             "description": self.description,
+            "image_url": self.image_url,
             "is_active": self.is_active,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,

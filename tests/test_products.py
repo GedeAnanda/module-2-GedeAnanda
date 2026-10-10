@@ -128,6 +128,38 @@ def test_create_product_defaults_stock_to_zero(client, admin_headers, sample_cat
     assert response.get_json()['data']['stock'] == 0
 
 
+def test_create_product_with_image_url(client, admin_headers, sample_category):
+    response = client.post('/products', headers=admin_headers, json={
+        "category_id": sample_category.id,
+        "name": "Mouse",
+        "price": 25,
+        "image_url": "https://cdn.example.com/mouse.png"
+    })
+    assert response.status_code == 201
+    assert response.get_json()['data']['image_url'] == 'https://cdn.example.com/mouse.png'
+
+
+def test_create_product_image_url_defaults_to_null(client, admin_headers, sample_category):
+    response = client.post('/products', headers=admin_headers, json={
+        "category_id": sample_category.id,
+        "name": "Mouse",
+        "price": 25
+    })
+    assert response.status_code == 201
+    assert response.get_json()['data']['image_url'] is None
+
+
+def test_create_product_invalid_image_url(client, admin_headers, sample_category):
+    for bad in ("not-a-url", "ftp://example.com/a.png", 123, "https://" + "a" * 500):
+        response = client.post('/products', headers=admin_headers, json={
+            "category_id": sample_category.id,
+            "name": "Mouse",
+            "price": 25,
+            "image_url": bad
+        })
+        assert response.status_code == 400, bad
+
+
 def test_create_product_missing_fields(client, admin_headers):
     response = client.post('/products', headers=admin_headers, json={"name": "Mouse"})
     assert response.status_code == 400
@@ -230,6 +262,27 @@ def test_update_product_partial(client, admin_headers, sample_product):
     data = response.get_json()['data']
     assert data['stock'] == 50
     assert data['name'] == 'Laptop'
+
+
+def test_update_product_image_url(client, admin_headers, sample_product):
+    response = client.put(f'/products/{sample_product.id}', headers=admin_headers, json={
+        "image_url": "https://cdn.example.com/laptop.jpg"
+    })
+    assert response.status_code == 200
+    assert response.get_json()['data']['image_url'] == 'https://cdn.example.com/laptop.jpg'
+
+    response = client.put(f'/products/{sample_product.id}', headers=admin_headers, json={
+        "image_url": None
+    })
+    assert response.status_code == 200
+    assert response.get_json()['data']['image_url'] is None
+
+
+def test_update_product_invalid_image_url(client, admin_headers, sample_product):
+    response = client.put(f'/products/{sample_product.id}', headers=admin_headers, json={
+        "image_url": "javascript:alert(1)"
+    })
+    assert response.status_code == 400
 
 
 def test_update_product_not_found(client, admin_headers):

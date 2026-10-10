@@ -1,9 +1,32 @@
+from urllib.parse import urlparse
+
 from flask import Blueprint, jsonify, request
 from app.extensions import db
 from app.models import Product, Category
 from app.utils.decorators import role_required
 
 products_bp = Blueprint('products', __name__, url_prefix='/products')
+
+IMAGE_URL_MAX_LENGTH = 500
+
+
+def _parse_image_url(value):
+    """Return (image_url, error). None or a blank string clears the image."""
+    if value is None:
+        return None, None
+    if not isinstance(value, str):
+        return None, "image_url must be a string"
+
+    url = value.strip()
+    if not url:
+        return None, None
+    if len(url) > IMAGE_URL_MAX_LENGTH:
+        return None, f"image_url must be at most {IMAGE_URL_MAX_LENGTH} characters"
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https') or not parsed.netloc:
+        return None, "image_url must be a valid http(s) URL"
+    return url, None
 
 @products_bp.route('', methods=['POST'])
 @role_required('admin')
@@ -45,13 +68,18 @@ def create_product():
         return jsonify({
             "error" :"Stock must be a non-negative integer"
         }), 400
-    
+
+    image_url, error = _parse_image_url(data.get('image_url'))
+    if error:
+        return jsonify({"error": error}), 400
+
     new_product = Product(
         category_id=data['category_id'],
         name=name,
         price=price,
         stock=stock,
         description=data.get('description'),
+        image_url=image_url,
         is_active=bool(data.get('is_active', True))
     )
     
@@ -153,7 +181,11 @@ def update_product(product_id):
         stock = data['stock']
         if not isinstance(stock, int) or isinstance(stock, bool) or stock < 0:
             return jsonify({"error": "Stock must be a non-negative integer"}), 400
-    
+    if 'image_url' in data:
+        image_url, error = _parse_image_url(data['image_url'])
+        if error:
+            return jsonify({"error": error}), 400
+
 
     if 'category_id' in data:
         product.category_id = data['category_id']
@@ -165,6 +197,8 @@ def update_product(product_id):
         product.stock = stock
     if 'description' in data:
         product.description = data['description']
+    if 'image_url' in data:
+        product.image_url = image_url
     if 'is_active' in data:
         product.is_active = bool(data['is_active'])
 
