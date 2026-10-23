@@ -9,8 +9,8 @@ def test_register_success(client):
     data = response.get_json()['data']
     assert data['user']['email'] == 'nanda@test.com'
     assert data['user']['role'] == 'customer'
-    assert 'access_token' in data
-    assert 'refresh_token' in data
+    assert 'access_token' not in data
+    assert 'refresh_token' not in data
 
 
 def test_register_does_not_expose_password(client):
@@ -126,12 +126,16 @@ def test_me_rejects_invalid_token(client):
 
 
 def test_refresh_returns_new_access_token(client):
-    register = client.post('/auth/register', json={
+    client.post('/auth/register', json={
         "username": "nanda",
         "email": "nanda@test.com",
         "password": "password123"
     })
-    refresh_token = register.get_json()['data']['refresh_token']
+    login = client.post('/auth/login', json={
+        "email": "nanda@test.com",
+        "password": "password123"
+    })
+    refresh_token = login.get_json()['data']['refresh_token']
 
     response = client.post('/auth/refresh', headers={
         "Authorization": f"Bearer {refresh_token}"

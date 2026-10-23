@@ -8,6 +8,19 @@ def _create_order(client, headers, product_id, quantity=1):
     })
 
 
+def _register_other_user(client):
+    client.post('/auth/register', json={
+        "username": "other",
+        "email": "other@test.com",
+        "password": "password123"
+    })
+    login = client.post('/auth/login', json={
+        "email": "other@test.com",
+        "password": "password123"
+    })
+    return {"Authorization": f"Bearer {login.get_json()['data']['access_token']}"}
+
+
 def test_create_order(client, customer_headers, sample_product):
     response = _create_order(client, customer_headers, sample_product.id, 2)
     assert response.status_code == 201
@@ -141,14 +154,7 @@ def test_create_order_requires_auth(client, sample_product):
 def test_get_orders_only_returns_own(client, customer_headers, sample_product):
     _create_order(client, customer_headers, sample_product.id)
 
-    other = client.post('/auth/register', json={
-        "username": "other",
-        "email": "other@test.com",
-        "password": "password123"
-    })
-    other_headers = {
-        "Authorization": f"Bearer {other.get_json()['data']['access_token']}"
-    }
+    other_headers = _register_other_user(client)
 
     response = client.get('/orders', headers=other_headers)
     assert response.status_code == 200
@@ -196,14 +202,7 @@ def test_get_order_of_another_user_returns_404(client, customer_headers, sample_
     order = _create_order(client, customer_headers, sample_product.id)
     order_id = order.get_json()['data']['id']
 
-    other = client.post('/auth/register', json={
-        "username": "other",
-        "email": "other@test.com",
-        "password": "password123"
-    })
-    other_headers = {
-        "Authorization": f"Bearer {other.get_json()['data']['access_token']}"
-    }
+    other_headers = _register_other_user(client)
 
     response = client.get(f'/orders/{order_id}', headers=other_headers)
     assert response.status_code == 404
@@ -287,14 +286,7 @@ def test_cancel_order_of_another_user_returns_404(client, customer_headers, samp
     order = _create_order(client, customer_headers, sample_product.id)
     order_id = order.get_json()['data']['id']
 
-    other = client.post('/auth/register', json={
-        "username": "other",
-        "email": "other@test.com",
-        "password": "password123"
-    })
-    other_headers = {
-        "Authorization": f"Bearer {other.get_json()['data']['access_token']}"
-    }
+    other_headers = _register_other_user(client)
 
     response = client.post(f'/orders/{order_id}/cancel', headers=other_headers)
     assert response.status_code == 404
